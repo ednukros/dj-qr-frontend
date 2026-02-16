@@ -84,3 +84,95 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes fireUp {
+  0% {
+    transform: translateY(0) translateX(0) scale(1) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120vh) translateX(calc(-80px + 160px * var(--random, 0.5))) scale(0.2) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  0% {
+    transform: translateX(-50%) translateY(100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes popScale {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Scrollbar personalizado para dropdown */
+.max-h-96::-webkit-scrollbar {
+  width: 8px;
+}
+
+.max-h-96::-webkit-scrollbar-track {
+  background: #171717;
+  border-radius: 10px;
+}
+
+.max-h-96::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 10px;
+}
+
+.max-h-96::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
