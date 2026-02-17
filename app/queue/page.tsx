@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { getRequestBadge } from '../utils/badges';
 
 type Event = {
   id: string;
@@ -12,8 +13,11 @@ type Event = {
 
 type Request = {
   id: string;
+  trackId: string;
   songTitle: string;
   artist: string;
+  cover: string;
+  requestCount: number;
   status: string;
   createdAt: string;
 };
@@ -158,16 +162,32 @@ export default function LiveQueuePage() {
                 </p>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {event.queue.map((req) => (
+                  {event.queue.map((req) => {
+                    const badge = getRequestBadge(req.requestCount);
+                    return (
                     <div
                       key={req.id}
                       className="bg-neutral-900 border border-neutral-700 rounded-lg p-3"
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <div className="font-semibold text-sm">
-                            {req.songTitle}
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="font-semibold text-sm">
+                              {req.songTitle}
+                            </div>
+                            {req.requestCount > 1 && (
+                              <span className="bg-brand-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                                ×{req.requestCount}
+                              </span>
+                            )}
                           </div>
+                          {badge && (
+                            <div className="mb-1">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${badge.className}`}>
+                                {badge.text}
+                              </span>
+                            </div>
+                          )}
                           <div className="text-xs text-neutral-400">
                             {req.artist}
                           </div>
@@ -227,7 +247,8 @@ export default function LiveQueuePage() {
                         </span>
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
 

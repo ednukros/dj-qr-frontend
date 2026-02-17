@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
+import RequestCooldown from '../../components/RequestCooldown';
 
 type Song = {
   id: string;
@@ -22,6 +23,34 @@ export default function EventPage({
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(false);
   const [showFire, setShowFire] = useState(false);
+  const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string>('');
+
+  // Generar o recuperar userId
+  useEffect(() => {
+    let id = localStorage.getItem('dj-qr-user-id');
+    if (!id) {
+      id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('dj-qr-user-id', id);
+    }
+    setUserId(id);
+  }, []);
+
+  // Verificar si el usuario tiene un cooldown activo al cargar
+  useEffect(() => {
+    if (!userId) return;
+
+    fetch(`http://localhost:3000/requests/rate-limit/${userId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.allowed && data.nextAvailableAt) {
+          setCooldownEnd(data.nextAvailableAt);
+        }
+      })
+      .catch((err) => {
+        console.error('Error checking rate limit:', err);
+      });
+  }, [userId]);
 
   // Cargar evento
   useEffect(() => {
@@ -52,32 +81,53 @@ export default function EventPage({
   }, [query, event]);
 
   async function requestSong(song: Song) {
-    if (!event) return;
+    if (!event || !userId) return;
 
-    await fetch('http://localhost:3000/requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        eventId: event.id,
-        songTitle: song.title,
-        artist: song.artist,
-      }),
-    });
+    try {
+      const response = await fetch('http://localhost:3000/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: event.id,
+          trackId: song.id,
+          songTitle: song.title,
+          artist: song.artist,
+          cover: song.image || '',
+          userId: userId,
+        }),
+      });
 
-    // 🔥 Activar animación + vibración móvil
-    setShowFire(true);
-    setQuery('');
-    setResults([]);
-    setSelectedSong(null);
+      if (response.status === 429) {
+        // Rate limit excedido
+        const data = await response.json();
+        setCooldownEnd(data.nextAvailableAt);
+        setQuery('');
+        setResults([]);
+        return;
+      }
 
-    // Vibrar en móvil (si está disponible)
-    if (navigator.vibrate) {
-      navigator.vibrate([50, 30, 50, 30, 100]);
+      if (!response.ok) {
+        throw new Error('Error al hacer la petición');
+      }
+
+      // 🔥 Activar animación + vibración móvil
+      setShowFire(true);
+      setQuery('');
+      setResults([]);
+      setSelectedSong(null);
+
+      // Vibrar en móvil (si está disponible)
+      if (navigator.vibrate) {
+        navigator.vibrate([50, 30, 50, 30, 100]);
+      }
+
+      setTimeout(() => {
+        setShowFire(false);
+      }, 4000);
+    } catch (error) {
+      console.error('Error requesting song:', error);
+      alert('Error al pedir la canción. Inténtalo de nuevo.');
     }
-
-    setTimeout(() => {
-      setShowFire(false);
-    }, 4000);
   }
 
   if (!event) {
@@ -100,6 +150,16 @@ export default function EventPage({
             🎶 Pide tu canción favorita
           </p>
         </div>
+
+        {/* Mostrar cooldown si está activo */}
+        {cooldownEnd && (
+          <div className="mb-6">
+            <RequestCooldown
+              nextAvailableAt={cooldownEnd}
+              onComplete={() => setCooldownEnd(null)}
+            />
+          </div>
+        )}
 
         {/* 🔥 FUEGUITOS MEJORADOS */}
         {showFire && (
@@ -162,10 +222,11 @@ export default function EventPage({
 
         <div className="relative">
           <input
-            className="w-full rounded-2xl bg-neutral-800 border-2 border-neutral-700 px-5 py-4 text-white placeholder-neutral-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all duration-200 text-lg"
-            placeholder="🔍 Buscar canción o artista..."
+            className="w-full rounded-2xl bg-neutral-800 border-2 border-neutral-700 px-5 py-4 text-white placeholder-neutral-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all duration-200 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            placeholder={cooldownEnd ? "⏱️ Espera para buscar..." : "🔍 Buscar canción o artista..."}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            disabled={!!cooldownEnd}
           />
 
           {/* Dropdown de resultados estilo select */}
@@ -217,7 +278,12 @@ export default function EventPage({
 
                       <button
                         onClick={() => requestSong(song)}
-                        className="bg-brand-500 hover:bg-brand-600 active:scale-95 px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex-shrink-0 text-sm"
+                        disabled={!!cooldownEnd}
+                        className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex-shrink-0 text-sm ${
+                          cooldownEnd
+                            ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                            : 'bg-brand-500 hover:bg-brand-600 active:scale-95'
+                        }`}
                       >
                          Pedir
                       </button>

@@ -2,12 +2,17 @@
 
 import { useEffect, useState, use } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { getRequestBadge } from '../../utils/badges';
 
 type Request = {
   id: string;
+  trackId: string;
   songTitle: string;
   artist: string;
+  cover: string;
+  requestCount: number;
   status: string;
+  createdAt: string;
 };
 
 export default function DjQueuePage({
@@ -78,15 +83,31 @@ export default function DjQueuePage({
       )}
 
       <div className="space-y-3">
-        {queue.map((req) => (
+        {queue.map((req) => {
+          const badge = getRequestBadge(req.requestCount);
+          return (
           <div
             key={req.id}
             className="bg-neutral-800 border border-neutral-700 rounded-xl p-4 flex justify-between"
           >
-            <div>
-              <div className="font-semibold">
-                {req.songTitle}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="font-semibold">
+                  {req.songTitle}
+                </div>
+                {req.requestCount > 1 && (
+                  <span className="bg-brand-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                    ×{req.requestCount}
+                  </span>
+                )}
               </div>
+              {badge && (
+                <div className="mb-2">
+                  <span className={`text-xs px-2 py-1 rounded-full font-semibold ${badge.className}`}>
+                    {badge.text}
+                  </span>
+                </div>
+              )}
               <div className="text-sm text-neutral-400">
                 {req.artist}
               </div>
@@ -126,7 +147,8 @@ export default function DjQueuePage({
               )}
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </main>
   );
