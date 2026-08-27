@@ -32,14 +32,29 @@ export default function DjEventsPage() {
       return;
     }
 
+    if (!confirm('⚠️ Esta acción eliminará todas las peticiones asociadas. ¿Continuar?')) {
+      return;
+    }
+
     try {
-      await fetch(`http://localhost:3000/events/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `http://localhost:3000/admin/event/${id}?force=true`,
+        {
+          method: 'DELETE',
+          headers: {
+            'x-admin-token': process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'dev-admin-token',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error al borrar el evento');
+      }
       
       setEvents(events.filter((e) => e.id !== id));
-    } catch (error) {
-      alert('Error al borrar el evento');
+    } catch (error: any) {
+      alert(error.message || 'Error al borrar el evento');
     }
   }
 

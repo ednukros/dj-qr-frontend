@@ -80,28 +80,63 @@ export default function LiveQueuePage() {
 
   async function updateStatus(
     requestId: string,
-    status: 'accepted' | 'rejected' | 'played'
+    action: 'approve' | 'reject' | 'played'
   ) {
-    await fetch(`http://localhost:3000/requests/${requestId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const response = await fetch(
+        `http://localhost:3000/admin/request/${requestId}/${action}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'x-admin-token': process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'dev-admin-token',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || 'Error al actualizar el estado');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Error al actualizar el estado');
+    }
   }
 
   async function deleteEvent(id: string, name: string) {
+    const hasActiveRequests = events
+      .find(e => e.id === id)
+      ?.queue.some(r => r.status === 'pending' || r.status === 'accepted');
+
     if (!confirm(`¿Seguro que quieres borrar el evento "${name}"?`)) {
       return;
     }
 
+    if (hasActiveRequests) {
+      if (!confirm('⚠️ Este evento tiene peticiones activas. ¿Confirmas que quieres eliminarlo de todas formas?')) {
+        return;
+      }
+    }
+
     try {
-      await fetch(`http://localhost:3000/events/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `http://localhost:3000/admin/event/${id}${hasActiveRequests ? '?force=true' : ''}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'x-admin-token': process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'dev-admin-token',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error al borrar el evento');
+      }
       
       setEvents(events.filter((e) => e.id !== id));
-    } catch (error) {
-      alert('Error al borrar el evento');
+    } catch (error: any) {
+      alert(error.message || 'Error al borrar el evento');
     }
   }
 
@@ -176,8 +211,9 @@ export default function LiveQueuePage() {
                               {req.songTitle}
                             </div>
                             {req.requestCount > 1 && (
-                              <span className="bg-brand-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
-                                ×{req.requestCount}
+                              <span className="flex items-center gap-1 text-orange-500 text-xs font-bold">
+                                🔥
+                                {req.requestCount}
                               </span>
                             )}
                           </div>
@@ -197,16 +233,16 @@ export default function LiveQueuePage() {
                             <>
                               <button
                                 onClick={() =>
-                                  updateStatus(req.id, 'accepted')
+                                  updateStatus(req.id, 'approve')
                                 }
                                 className="px-2 py-1 bg-green-600 hover:bg-green-700 transition rounded text-xs font-semibold"
-                                title="Aceptar"
+                                title="Aprobar"
                               >
                                 ✓
                               </button>
                               <button
                                 onClick={() =>
-                                  updateStatus(req.id, 'rejected')
+                                  updateStatus(req.id, 'reject')
                                 }
                                 className="px-2 py-1 bg-red-600 hover:bg-red-700 transition rounded text-xs font-semibold"
                                 title="Rechazar"
@@ -218,7 +254,7 @@ export default function LiveQueuePage() {
                           {req.status === 'accepted' && (
                             <button
                               onClick={() => updateStatus(req.id, 'played')}
-                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 transition rounded text-xs font-semibold"
+                              className="px-2 py-1 bg-purple-600 hover:bg-purple-700 transition rounded text-xs font-semibold"
                               title="Marcar como reproducida"
                             >
                               ▶

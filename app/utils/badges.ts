@@ -7,8 +7,8 @@ export function getRequestBadge(count: number): {
 } | null {
   if (count >= 5) {
     return {
-      text: '🔥 Muy demandada',
-      className: 'bg-gradient-to-r from-orange-500 to-red-600 text-white',
+      text: 'Lo está petando',
+      className: 'bg-gradient-to-r from-purple-700 to-green-600 text-white',
     };
   }
   

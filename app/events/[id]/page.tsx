@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getRequestBadge } from '../../utils/badges';
+import Link from 'next/link';
 
 type Request = {
   id: string;
@@ -61,20 +62,42 @@ export default function DjQueuePage({
 
   async function updateStatus(
     requestId: string,
-    status: 'accepted' | 'rejected' | 'played',
+    action: 'approve' | 'reject' | 'played',
   ) {
-    await fetch(`http://localhost:3000/requests/${requestId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const response = await fetch(
+        `http://localhost:3000/admin/request/${requestId}/${action}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'x-admin-token': process.env.NEXT_PUBLIC_ADMIN_TOKEN || 'dev-admin-token',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || 'Error al actualizar el estado');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Error al actualizar el estado');
+    }
   }
 
   return (
     <main className="min-h-screen bg-neutral-900 text-neutral-100 p-6">
-      <h1 className="text-2xl font-bold mb-6">
-        Cola de peticiones
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">
+          Cola de peticiones
+        </h1>
+        <Link
+          href={`/stats/${id}`}
+          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-4 py-2 rounded-lg transition font-semibold text-sm"
+        >
+          📊 Ver Estadísticas
+        </Link>
+      </div>
 
       {queue.length === 0 && (
         <p className="text-neutral-400">
@@ -96,43 +119,47 @@ export default function DjQueuePage({
                   {req.songTitle}
                 </div>
                 {req.requestCount > 1 && (
-                  <span className="bg-brand-500 text-white text-xs px-2 py-1 rounded-full font-bold">
-                    ×{req.requestCount}
+                  <span className="flex items-center gap-1 text-orange-500 text-sm font-bold">
+                    🔥
+                    {req.requestCount}
                   </span>
                 )}
               </div>
-              {badge && (
+             
+              <div className="text-sm text-neutral-400">
+                {req.artist}
+              </div>
+               {badge && (
                 <div className="mb-2">
                   <span className={`text-xs px-2 py-1 rounded-full font-semibold ${badge.className}`}>
                     {badge.text}
                   </span>
                 </div>
               )}
-              <div className="text-sm text-neutral-400">
-                {req.artist}
-              </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="">
               {req.status === 'pending' && (
-                <>
+                <div className='flex flex-col gap-2'>
                   <button
                     onClick={() =>
-                      updateStatus(req.id, 'accepted')
+                      updateStatus(req.id, 'approve')
                     }
-                    className="bg-brand-500 hover:bg-brand-600 px-3 py-2 rounded-lg"
+                    className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg transition"
+                    title="Aprobar"
                   >
                     ✓
                   </button>
                   <button
                     onClick={() =>
-                      updateStatus(req.id, 'rejected')
+                      updateStatus(req.id, 'reject')
                     }
-                    className="bg-neutral-700 hover:bg-neutral-600 px-3 py-2 rounded-lg"
+                    className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg transition"
+                    title="Rechazar"
                   >
                     ✕
                   </button>
-                </>
+                </div>
               )}
 
               {req.status === 'accepted' && (
@@ -140,10 +167,23 @@ export default function DjQueuePage({
                   onClick={() =>
                     updateStatus(req.id, 'played')
                   }
-                  className="bg-brand-500 hover:bg-brand-600 px-3 py-2 rounded-lg"
+                  className="bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg transition"
+                  title="Marcar como reproducida"
                 >
                   ▶
                 </button>
+              )}
+
+              {req.status === 'played' && (
+                <span className="text-purple-400 text-sm">
+                  ✓ Reproducida
+                </span>
+              )}
+
+              {req.status === 'rejected' && (
+                <span className="text-red-400 text-sm">
+                  ✕ Rechazada
+                </span>
               )}
             </div>
           </div>
